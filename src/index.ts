@@ -1,9 +1,15 @@
-import generateDeviceFingerprint from './FingerprintSDK';
+import generateDeviceFingerprint from './fingerprintSDK';
 
-generateDeviceFingerprint().then(fingerprint => {
-  console.log('Device Fingerprint:', fingerprint);
-}).catch(error => {
-  console.error('Error generating fingerprint:', error);
-});
+async function main() {
+  try {
+    const fingerprint = await generateDeviceFingerprint();
+    console.log('Device Fingerprint:', fingerprint);
+  } catch (error) {
+    console.error('Error generating device fingerprint:', error);
+  }
+}
 
-export default generateDeviceFingerprint;
+// Expose it globally if needed
+(window as any).generateDeviceFingerprint = generateDeviceFingerprint;
+
+main();
