@@ -2,11 +2,19 @@ async function generateDeviceFingerprint() {
     const apiKey = "l00e81-23y8l5-r6r808-66u7pf";
     const currentPageURL = window.location.href;
     const homeRoute = window.location.origin;
+    //retrieve initial IP from local storage
+    let initialIp = localStorage.getItem("initialIp");
+    if (!initialIp) {
+        initialIp = await getPublicIP();
+        if (initialIp) {
+            localStorage.setItem("initialIp", initialIp);
+        }
+    }
     async function fetchFromAPI(url) {
         try {
             const response = await fetch(url);
             if (!response.ok)
-                throw new Error("Network response was not ok");
+                throw new Error("Network response was not ok...!");
             return await response.json();
         }
         catch {
@@ -43,7 +51,9 @@ async function generateDeviceFingerprint() {
     }
     async function getPublicIP() {
         try {
-            const response = await fetch("https://api64.ipify.org?format=json", { cache: "no-cache" });
+            const response = await fetch("https://api64.ipify.org?format=json", {
+                cache: "no-cache",
+            });
             const data = await response.json();
             return data?.ip || null;
         }
@@ -86,9 +96,10 @@ async function generateDeviceFingerprint() {
         const end = performance.now();
         return response.ok ? end - start : Infinity;
     }
-    async function hasIPChanged(initialIP) {
+    async function hasIPChanged() {
         const currentIP = await getPublicIP();
-        return currentIP !== initialIP;
+        // Compare only if initialIp is valid
+        return currentIP && initialIp ? currentIP !== initialIp : false;
     }
     async function detectEmulator() {
         const userAgent = navigator.userAgent.toLowerCase();
@@ -176,19 +187,19 @@ async function generateDeviceFingerprint() {
         try {
             const metadata = getBrowserMetadata();
             const fingerprintComponents = { ...metadata };
-            const initialIP = await getPublicIP();
-            const proxyData = initialIP
-                ? await checkIPReputation(initialIP)
+            const currentIP = await getPublicIP();
+            const proxyData = currentIP
+                ? await checkIPReputation(currentIP)
                 : null;
-            const ipEntry = proxyData && initialIP ? proxyData[initialIP] : null;
+            const ipEntry = proxyData && currentIP ? proxyData[currentIP] : null;
             const isVPN = ipEntry && typeof ipEntry !== "string"
                 ? ipEntry.proxy === "yes"
                 : false;
-            fingerprintComponents.ipAddress = initialIP || "unknown";
+            fingerprintComponents.ipAddress = currentIP || "unknown";
             fingerprintComponents.isVPN = isVPN;
             fingerprintComponents.isIncognito = await detectIncognitoMode();
             fingerprintComponents.isEmulator = await detectEmulator();
-            fingerprintComponents.ipChanged = await hasIPChanged(initialIP);
+            fingerprintComponents.ipChanged = await hasIPChanged();
             // Add fingerprints from canvas, WebGL, and audio
             fingerprintComponents.canvasFingerprint = getCanvasFingerprint();
             fingerprintComponents.webGLFingerprint = getWebGLFingerprint();
@@ -197,7 +208,6 @@ async function generateDeviceFingerprint() {
             fingerprintComponents.fingerprintHash = fingerprintHash;
             fingerprintComponents.latency = await measureLatency(endpoint || currentPageURL);
             fingerprintComponents.dnsLeak = await checkDNSLeak();
-            console.log(JSON.stringify(proxyData, null, 2));
             return {
                 fingerprintHash,
                 ipAddress: fingerprintComponents.ipAddress,
@@ -235,4 +245,6 @@ async function generateDeviceFingerprint() {
     }
     return await initializeFingerprint();
 }
+// Expose the function to the window object
+window.generateDeviceFingerprint = generateDeviceFingerprint;
 export default generateDeviceFingerprint;
