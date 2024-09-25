@@ -1,4 +1,4 @@
-import generateDeviceFingerprint from './fingerprintSDK';
+import generateDeviceFingerprint from './fingerprintSDK';  // Import the function
 
 async function main() {
   try {
@@ -9,7 +9,5 @@ async function main() {
   }
 }
 
-// Expose it globally if needed
-(window as any).generateDeviceFingerprint = generateDeviceFingerprint;
+main();  // Call the main function to execute
 
-main();

@@ -1,4 +1,4 @@
-import generateDeviceFingerprint from './fingerprintSDK';
+import generateDeviceFingerprint from './fingerprintSDK'; // Import the function
 async function main() {
     try {
         const fingerprint = await generateDeviceFingerprint();
@@ -8,6 +8,4 @@ async function main() {
         console.error('Error generating device fingerprint:', error);
     }
 }
-// Expose it globally if needed
-window.generateDeviceFingerprint = generateDeviceFingerprint;
-main();
+main(); // Call the main function to execute
