@@ -43,7 +43,7 @@ async function generateDeviceFingerprint() {
     }
     async function getPublicIP() {
         try {
-            const response = await fetch("https://api64.ipify.org?format=json");
+            const response = await fetch("https://api64.ipify.org?format=json", { cache: "no-cache" });
             const data = await response.json();
             return data?.ip || null;
         }

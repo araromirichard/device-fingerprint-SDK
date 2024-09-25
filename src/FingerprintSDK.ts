@@ -1,4 +1,4 @@
-import { Fingerprint, ProxyData, GeoLocation } from "./types";
+import { Fingerprint, ProxyData } from "./types";
 
 async function generateDeviceFingerprint(): Promise<Fingerprint> {
   const apiKey = "l00e81-23y8l5-r6r808-66u7pf";
@@ -49,7 +49,7 @@ async function generateDeviceFingerprint(): Promise<Fingerprint> {
 
   async function getPublicIP(): Promise<string | null> {
     try {
-      const response = await fetch("https://api64.ipify.org?format=json");
+      const response = await fetch("https://api64.ipify.org?format=json", {cache: "no-cache"});
       const data = await response.json();
       return data?.ip || null;
     } catch (error) {
