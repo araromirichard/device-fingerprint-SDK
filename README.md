@@ -29,7 +29,7 @@ A lightweight JavaScript SDK for generating device fingerprints using various br
 ```
 
 
-## CDN    
+## LINK   
 
-    https://cdn.jsdelivr.net/npm/device-fingerprint-sdk@1.0.1/dist/index.js
+   https://device-fingerprint-sdk.netlify.app
 
