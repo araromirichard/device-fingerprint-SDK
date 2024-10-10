@@ -1,11 +1,29 @@
-import { Fingerprint, ProxyData } from "./types";
+import { Fingerprint, GeoLocation, ProxyData } from "./types";
 
-async function generateDeviceFingerprint(): Promise<Fingerprint> {
-  const apiKey = "l00e81-23y8l5-r6r808-66u7pf";
-  const currentPageURL = window.location.href;
-  const homeRoute = window.location.origin;
+interface Window {
+  RequestFileSystem?: any;
+  webkitRequestFileSystem?: any;
+  TEMPORARY?: number;
+}
 
-  async function fetchFromAPI(url: string): Promise<any | null> {
+interface IPReputationResponse {
+  proxy?: boolean;
+}
+
+interface BrowserMetadata {
+  userAgent: string;
+  platform: string;
+  language: string;
+  screenResolution: string;
+  colorDepth: number;
+  hardwareConcurrency: number;
+  timezone: string;
+}
+
+class DeviceFingerprintSDK {
+  private static cache: Map<string, any> = new Map();
+
+  private static async fetchFromAPI(url: string): Promise<any | null> {
     try {
       const response = await fetch(url);
       if (!response.ok) throw new Error("Network response was not ok");
@@ -15,41 +33,9 @@ async function generateDeviceFingerprint(): Promise<Fingerprint> {
     }
   }
 
-  async function hashString(str: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(str);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((byte) => byte.toString(16).padStart(2, "0")).join("");
-  }
-
-  function getBrowserMetadata() {
-    const { userAgent, language, platform, languages } = navigator;
-    const screenResolution = `${screen.width}x${screen.height}`;
-    const timezone =
-      Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown";
-    const hardwareConcurrency = navigator.hardwareConcurrency || "unknown";
-    const deviceMemory = navigator.deviceMemory || "unknown";
-    const colorDepth = screen.colorDepth || "unknown";
-    const devicePixelRatio = window.devicePixelRatio || "unknown";
-
-    return {
-      userAgent,
-      language,
-      languages: languages.join(","),
-      platform,
-      screenResolution,
-      timezone,
-      hardwareConcurrency,
-      deviceMemory,
-      colorDepth,
-      devicePixelRatio,
-    };
-  }
-
-  async function getPublicIP(): Promise<string | null> {
+  private static async getPublicIP(): Promise<string | null> {
     try {
-      const response = await fetch("https://api64.ipify.org?format=json", {cache: "no-cache"});
+      const response = await fetch("https://api64.ipify.org?format=json", { cache: "no-cache" });
       const data = await response.json();
       return data?.ip || null;
     } catch (error) {
@@ -58,230 +44,200 @@ async function generateDeviceFingerprint(): Promise<Fingerprint> {
     }
   }
 
-  async function checkIPReputation(ip: string): Promise<ProxyData | null> {
-    const url = `https://proxycheck.io/v2/${ip}?key=${apiKey}&vpn=1&asn=1&threat=1&risk=1`;
-    return await fetchFromAPI(url);
+  private static async checkIPReputation(ip: string): Promise<IPReputationResponse | null> {
+    const apiKey = "c59f3700615cd3e49a129e9503d03bc2";
+    const url = `https://api.ipapi.com/${ip}?access_key=${apiKey}`;
+    return await this.fetchFromAPI(url);
   }
 
-  async function checkDNSLeak(): Promise<boolean> {
-    const dnsLeakCheckUrl = `https://cloudflare-dns.com/dns-query?name=${homeRoute}&type=A`;
-    const dnsData = await fetch(dnsLeakCheckUrl, {
-      headers: { Accept: "application/dns-json" },
-    })
-      .then((response) => response.json())
-      .catch(() => null);
-
-    if (!dnsData || !dnsData.Answer) return false;
-
-    const dnsServer = dnsData.Answer[0].data;
-    const knownPublicDNS = ["8.8.8.8", "1.1.1.1", "9.9.9.9", "208.67.222.222"];
-
-    return knownPublicDNS.includes(dnsServer);
+  private static getBrowserMetadata(): BrowserMetadata {
+    return {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      language: navigator.language,
+      screenResolution: `${screen.width}x${screen.height}`,
+      colorDepth: screen.colorDepth,
+      hardwareConcurrency: navigator.hardwareConcurrency,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    };
   }
 
-  async function detectIncognitoMode(): Promise<boolean> {
-    return new Promise((resolve) => {
-      const fs =
-        (window as any).RequestFileSystem ||
-        (window as any).webkitRequestFileSystem;
+  private static async detectIncognitoMode(): Promise<boolean> {
+    try {
+      const fs = (window as any).RequestFileSystem || (window as any).webkitRequestFileSystem;
+      if (!fs) return false;
 
-      if (!fs) {
-        resolve(false);
-        return;
-      }
-
-      fs(
-        (window as any).TEMPORARY,
-        100,
-        () => resolve(false),
-        () => resolve(true)
-      );
-    });
+      return new Promise((resolve) => {
+        fs((window as any).TEMPORARY, 100, () => resolve(false), () => resolve(true));
+      });
+    } catch {
+      return false;
+    }
   }
 
-  async function measureLatency(endpoint: string): Promise<number> {
-    const start = performance.now();
-    const response = await fetch(endpoint, { cache: "no-cache" });
-    const end = performance.now();
-    return response.ok ? end - start : Infinity;
+  private static async detectEmulator(): Promise<boolean> {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const emulatorKeywords = ['emulator', 'android sdk built for x86', 'google_sdk'];
+    return emulatorKeywords.some(keyword => userAgent.includes(keyword));
   }
 
-  async function hasIPChanged(initialIP: string | null): Promise<boolean> {
-    const currentIP = await getPublicIP();
+  private static async hasIPChanged(): Promise<boolean> {
+    const currentIP = await this.getPublicIP();
+    const initialIP = localStorage.getItem("initialIp");
     return currentIP !== initialIP;
   }
 
-  async function detectEmulator(): Promise<boolean> {
-    const userAgent = navigator.userAgent.toLowerCase();
-    return /emulator|virtual|sdk|bot|crawler|spider|phantom/i.test(userAgent);
+  private static getCanvasFingerprint(): string {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    
+    ctx.textBaseline = "top";
+    ctx.font = "14px 'Arial'";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#f60";
+    ctx.fillRect(125, 1, 62, 20);
+    ctx.fillStyle = "#069";
+    ctx.fillText("Hello, world!", 2, 15);
+    ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+    ctx.fillText("Hello, world!", 4, 17);
+    
+    return canvas.toDataURL();
   }
 
-  // Canvas Fingerprint Generation
-  function getCanvasFingerprint(): string {
+  private static getWebGLFingerprint(): string {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return '';
+
+    const webgl = gl as WebGLRenderingContext;
+
+    const debugInfo = webgl.getExtension('WEBGL_debug_renderer_info');
+    if (!debugInfo) return '';
+
+    return webgl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+  }
+  private static async getAudioFingerprint(): Promise<string> {
     try {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-
-      // Check if the context is null
-      if (!ctx) {
-        return "canvas_context_error";
-      }
-
-      ctx.textBaseline = "top";
-      ctx.font = "14px Arial";
-      ctx.fillStyle = "#f60";
-      ctx.fillRect(125, 1, 62, 20);
-      ctx.fillStyle = "#069";
-      ctx.fillText("Fingerprinting Test", 2, 15);
-
-      return canvas.toDataURL();
-    } catch (e) {
-      return "canvas_fingerprint_error";
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const analyser = audioContext.createAnalyser();
+      const gainNode = audioContext.createGain();
+      gainNode.gain.value = 0;
+      oscillator.connect(analyser);
+      analyser.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.start();
+      
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(dataArray);
+      
+      oscillator.stop();
+      audioContext.close();
+      
+      return dataArray.join(',');
+    } catch {
+      return '';
     }
   }
 
-  // WebGL Fingerprint Generation
-  function getWebGLFingerprint(): string {
-    try {
-      const canvas = document.createElement("canvas");
-      // Get the WebGL context with type assertion
-      const gl =
-        (canvas.getContext("webgl") as WebGLRenderingContext) ||
-        (canvas.getContext("experimental-webgl") as WebGLRenderingContext);
-
-      // Check if the WebGL context is available
-      if (!gl) {
-        return "webgl_unavailable";
-      }
-
-      // Check for the WEBGL_debug_renderer_info extension
-      const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-      const renderer = debugInfo
-        ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
-        : "unknown_renderer";
-      const vendor = debugInfo
-        ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)
-        : "unknown_vendor";
-
-      return `${renderer}-${vendor}`;
-    } catch (e) {
-      return "webgl_fingerprint_error";
-    }
+  private static async hashString(input: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(input);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // Audio Fingerprint Generation
-  async function getAudioFingerprint(): Promise<string> {
+  private static async measureLatency(url: string): Promise<number> {
+    const start = performance.now();
+    try {
+      await fetch(url, { mode: 'no-cors', cache: 'no-store' });
+    } catch {}
+    return Math.round(performance.now() - start);
+  }
+
+  private static async getCachedOrFetch<T>(key: string, fetchFn: () => Promise<T>): Promise<T> {
+    if (this.cache.has(key)) {
+      return this.cache.get(key) as T;
+    }
+    const result = await fetchFn();
+    this.cache.set(key, result);
+    return result;
+  }
+  
+  private static async getGeolocation(): Promise<GeoLocation | 'unknown'> {
     return new Promise((resolve) => {
-      try {
-        const audioCtx = new window.OfflineAudioContext(1, 44100, 44100);
-        const oscillator = audioCtx.createOscillator();
-        const compressor = audioCtx.createDynamicsCompressor();
-
-        oscillator.type = "triangle";
-        oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime); // 1000 Hz
-        oscillator.connect(compressor);
-        compressor.connect(audioCtx.destination);
-        oscillator.start(0);
-        oscillator.stop(0.1);
-
-        audioCtx
-          .startRendering()
-          .then((renderedBuffer) => {
-            const fingerprint = renderedBuffer
-              .getChannelData(0)
-              .slice(0, 100)
-              .reduce((acc, val) => acc + Math.abs(val), 0)
-              .toString();
-            resolve(fingerprint);
-          })
-          .catch(() => {
-            resolve("audio_rendering_error");
-          });
-      } catch (e) {
-        resolve("audio_fingerprint_error");
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+            const data = await response.json();
+            resolve({
+              country: data.countryName,
+              region: data.principalSubdivision,
+              city: data.city,
+              latitude: latitude.toString(),
+              longitude: longitude.toString()
+            });
+          },
+          () => resolve('unknown'),
+          { timeout: 5000, maximumAge: 0 }
+        );
+      } else {
+        resolve('unknown');
       }
     });
   }
 
-  async function initializeFingerprint(
-    endpoint?: string
-  ): Promise<Fingerprint> {
+  public static async generateDeviceFingerprint(): Promise<Fingerprint> {
     try {
-      const metadata = getBrowserMetadata();
+      const metadata = this.getBrowserMetadata();
       const fingerprintComponents: any = { ...metadata };
 
-      const initialIP = await getPublicIP();
-      const proxyData: ProxyData | null = initialIP
-        ? await checkIPReputation(initialIP)
-        : null;
+      const currentIP = await this.getCachedOrFetch('publicIP', this.getPublicIP);
+      const proxyData = currentIP ? await this.getCachedOrFetch(`proxyData_${currentIP}`, () => this.checkIPReputation(currentIP)) : null;
 
-      const ipEntry = proxyData && initialIP ? proxyData[initialIP] : null;
-      const isVPN =
-        ipEntry && typeof ipEntry !== "string"
-          ? ipEntry.proxy === "yes"
-          : false;
-
-      fingerprintComponents.ipAddress = initialIP || "unknown";
+      const isVPN = proxyData && proxyData.proxy === true;
+      fingerprintComponents.ipAddress = currentIP || "unknown";
       fingerprintComponents.isVPN = isVPN;
-      fingerprintComponents.isIncognito = await detectIncognitoMode();
-      fingerprintComponents.isEmulator = await detectEmulator();
-      fingerprintComponents.ipChanged = await hasIPChanged(initialIP);
 
-      // Add fingerprints from canvas, WebGL, and audio
-      fingerprintComponents.canvasFingerprint = getCanvasFingerprint();
-      fingerprintComponents.webGLFingerprint = getWebGLFingerprint();
-      fingerprintComponents.audioFingerprint = await getAudioFingerprint();
+      fingerprintComponents.isIncognito = await this.detectIncognitoMode();
+      fingerprintComponents.isEmulator = await this.detectEmulator();
+      fingerprintComponents.ipChanged = await this.hasIPChanged();
+      fingerprintComponents.geoLocation = await this.getGeolocation();
 
-      const fingerprintHash = await hashString(
-        JSON.stringify(fingerprintComponents)
-      );
+      fingerprintComponents.canvasFingerprint = this.getCanvasFingerprint();
+      fingerprintComponents.webGLFingerprint = this.getWebGLFingerprint();
+      fingerprintComponents.audioFingerprint = await this.getAudioFingerprint();
+
+      const fingerprintHash = await this.hashString(JSON.stringify(fingerprintComponents));
       fingerprintComponents.fingerprintHash = fingerprintHash;
-       fingerprintComponents.latency = await measureLatency(
-        endpoint || currentPageURL
-      );
-      
-      fingerprintComponents.dnsLeak = await checkDNSLeak();
+      fingerprintComponents.latency = await this.measureLatency(window.location.href);
 
-      console.log(JSON.stringify(proxyData, null, 2));
+      console.log('Device fingerprint generated successfully');
 
       return {
         fingerprintHash,
         ipAddress: fingerprintComponents.ipAddress,
-        geoLocation:
-          ipEntry && typeof ipEntry !== "string"
-            ? {
-                country: ipEntry.country || "unknown",
-                region: ipEntry.region || "unknown",
-                city: ipEntry.city || "unknown",
-                latitude: ipEntry.latitude.toString() || "unknown",
-                longitude: ipEntry.longitude.toString() || "unknown",
-              }
-            : {
-                country: "unknown",
-                region: "unknown",
-                city: "unknown",
-                latitude: "unknown",
-                longitude: "unknown",
-              },
-        isVPN,
-        isTor:
-          ipEntry && typeof ipEntry !== "string" ? ipEntry.tor === "1" : false,
+        geoLocation: fingerprintComponents.geoLocation,
+        isVPN: fingerprintComponents.isVPN,
+        isTor: fingerprintComponents.isTor || false,
         isEmulator: fingerprintComponents.isEmulator,
         isIncognito: fingerprintComponents.isIncognito,
         latency: fingerprintComponents.latency,
         ipChanged: fingerprintComponents.ipChanged,
-        dnsLeak: fingerprintComponents.dnsLeak,
+        dnsLeak: fingerprintComponents.dnsLeak || false,
         canvasFingerprint: fingerprintComponents.canvasFingerprint,
         webGLFingerprint: fingerprintComponents.webGLFingerprint,
         audioFingerprint: fingerprintComponents.audioFingerprint,
       };
     } catch (error) {
-      console.error("Error initializing fingerprint:", error);
-      throw error;
+      console.error("Error generating device fingerprint:", error);
+      throw new Error('Failed to generate device fingerprint');
     }
   }
-
-  return await initializeFingerprint();
 }
 
-export default generateDeviceFingerprint;
+export default DeviceFingerprintSDK;

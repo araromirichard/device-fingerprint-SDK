@@ -1,23 +1,34 @@
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SDK Test</title>
-
+    <style>
+        #loading { display: none; }
+        #error { display: none; color: red; }
+    </style>
 </head>
-
 <body>
     <h1>Device Fingerprint Test</h1>
+    <div id="loading">Generating fingerprint...</div>
+    <div id="error"></div>
+    <pre id="result"></pre>
     <script type="module">
-        import generateDeviceFingerprint from './dist/fingerprintSDK.js';
-        generateDeviceFingerprint().then(fingerprint => {
-            console.log(JSON.stringify(fingerprint, null , 2));
+        import DeviceFingerprintSDK from './dist/fingerprintSDK.js';
+        
+        const loadingEl = document.getElementById('loading');
+        const errorEl = document.getElementById('error');
+        const resultEl = document.getElementById('result');
+
+        loadingEl.style.display = 'block';
+        DeviceFingerprintSDK.generateDeviceFingerprint().then(fingerprint => {
+            loadingEl.style.display = 'none';
+            resultEl.textContent = JSON.stringify(fingerprint, null, 2);
         }).catch(error => {
-            console.error('Error generating fingerprint:', error);
+            loadingEl.style.display = 'none';
+            errorEl.style.display = 'block';
+            errorEl.textContent = 'Error generating fingerprint: ' + error.message;
         });
     </script>
-
 </body>
-
 </html>

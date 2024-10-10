@@ -29,30 +29,26 @@ export interface ProxyDataEntry {
     proxy: string;
     type: string;
     risk: number;
-    tor?: string;
+    tor?: 'yes' | 'no' | 'unknown';
 }
 
-// Update the ProxyData interface to use the new ProxyDataEntry type
 export interface ProxyData {
-    status: string; 
+    status: string;
     [ip: string]: ProxyDataEntry | string;
 }
-
-
 
 export interface Fingerprint {
     fingerprintHash: string;
     ipAddress: string;
-    geoLocation: GeoLocation | 'unknown'; // Fallback if location data is not available
+    geoLocation: GeoLocation | 'unknown';
     isVPN: boolean;
     isTor: boolean;
     isEmulator: boolean;
     isIncognito: boolean;
-    latency: number; // Measured in milliseconds
-    ipChanged: boolean; // Indicates if the IP has changed since the last check
-    dnsLeak: boolean; // Indicates if there's a DNS leak
+    latency: number;
+    ipChanged: boolean;
+    dnsLeak: boolean;
     canvasFingerprint: string;
     webGLFingerprint: string;
     audioFingerprint: string;
 }
-

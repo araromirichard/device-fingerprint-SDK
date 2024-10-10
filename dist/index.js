@@ -1,11 +1,12 @@
-import generateDeviceFingerprint from './fingerprintSDK'; // Import the function
+import generateDeviceFingerprint from './FingerprintSDK';
 async function main() {
     try {
-        const fingerprint = await generateDeviceFingerprint();
+        const fingerprint = new generateDeviceFingerprint();
         console.log('Device Fingerprint:', fingerprint);
     }
     catch (error) {
         console.error('Error generating device fingerprint:', error);
     }
 }
-main(); // Call the main function to execute
+main();
+export { generateDeviceFingerprint };

@@ -1,7 +1,13 @@
 interface Navigator {
-    /**
-     * The amount of device memory in gigabytes.
-     * Available in secure contexts.
-     */
-    deviceMemory?: number; // Optional, as not all browsers may support it
-}
+    deviceMemory?: number;
+    hardwareConcurrency: number;
+    platform: string;
+    userAgent: string;
+    languages: readonly string[];
+    connection?: {
+      effectiveType: string;
+      downlink: number;
+      rtt: number;
+    };
+  }
+  
