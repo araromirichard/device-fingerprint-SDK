@@ -1,4 +1,4 @@
-import generateDeviceFingerprint from './FingerprintSDK';
+import generateDeviceFingerprint from './fingerprintSDK';
 async function main() {
     try {
         const fingerprint = new generateDeviceFingerprint();

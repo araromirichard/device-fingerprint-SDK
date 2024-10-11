@@ -7,8 +7,35 @@ interface Window {
 }
 
 interface IPReputationResponse {
-  proxy?: boolean;
+  ip: string;
+  security: {
+    vpn: boolean;
+    proxy: boolean;
+    tor: boolean;
+    relay: boolean;
+  };
+  location: {
+    city: string;
+    region: string;
+    country: string;
+    continent: string;
+    region_code: string;
+    country_code: string;
+    continent_code: string;
+    latitude: string;
+    longitude: string;
+    time_zone: string;
+    locale_code: string;
+    metro_code: string;
+    is_in_european_union: boolean;
+  };
+  network: {
+    network: string;
+    autonomous_system_number: string;
+    autonomous_system_organization: string;
+  };
 }
+
 
 interface BrowserMetadata {
   userAgent: string;
@@ -36,18 +63,33 @@ class DeviceFingerprintSDK {
   private static async getPublicIP(): Promise<string | null> {
     try {
       const response = await fetch("https://api64.ipify.org?format=json", { cache: "no-cache" });
+
+
       const data = await response.json();
+      console.log("ipify :", JSON.stringify(data, null, 2))
       return data?.ip || null;
     } catch (error) {
       console.error("Error fetching public IP:", error);
       return null;
     }
   }
+  private static async checkIPReputation(ip: string): Promise<IPReputationResponse> {
+    const apiKey = "28b1c552844847a1bdbfc7fd8f49de38";
+    const url = `https://vpnapi.io/api/${ip}?key=${apiKey}`;
+    const response = await this.fetchFromAPI(url);
 
-  private static async checkIPReputation(ip: string): Promise<IPReputationResponse | null> {
-    const apiKey = "c59f3700615cd3e49a129e9503d03bc2";
-    const url = `https://api.ipapi.com/${ip}?access_key=${apiKey}`;
-    return await this.fetchFromAPI(url);
+    console.log(JSON.stringify(response, null, 2));
+    return {
+      ip: response?.ip || ip,
+      security: {
+        vpn: response?.security?.vpn || false,
+        proxy: response?.security?.proxy || false,
+        tor: response?.security?.tor || false,
+        relay: response?.security?.relay || false
+      },
+      location: response?.location || {},
+      network: response?.network || {}
+    };
   }
 
   private static getBrowserMetadata(): BrowserMetadata {
@@ -61,18 +103,117 @@ class DeviceFingerprintSDK {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
   }
-
   private static async detectIncognitoMode(): Promise<boolean> {
-    try {
-      const fs = (window as any).RequestFileSystem || (window as any).webkitRequestFileSystem;
-      if (!fs) return false;
+    const checks = [
+      this.checkFileSystem,
+      this.checkIndexedDB,
+      this.checkLocalStorage,
+      this.checkWebRTC,
+      this.checkPersistentStorage,
+      this.checkTemporaryStorage,
+      this.checkCookiesEnabled,
+      this.checkPDFViewerEnabled,
+      this.checkPluginsLength
+    ];
+   
 
-      return new Promise((resolve) => {
-        fs((window as any).TEMPORARY, 100, () => resolve(false), () => resolve(true));
-      });
+    const results = await Promise.all(checks.map(check => check()));
+    console.log("checks :", results)
+    // Count the number of checks that indicate incognito mode
+    const incognitoCount = results.filter(result => result === true).length;
+
+    // Consider it incognito if more than half of the checks indicate so
+    return incognitoCount > checks.length / 2;
+  }
+
+
+  private static async checkFileSystem(): Promise<boolean> {
+    return new Promise(resolve => {
+      if ('webkitRequestFileSystem' in window) {
+        (window as any).webkitRequestFileSystem(
+          (window as any).TEMPORARY, 100,
+          () => resolve(false),
+          () => resolve(true)
+        );
+      } else {
+        resolve(false);
+      }
+    });
+  }
+
+  private static async checkIndexedDB(): Promise<boolean> {
+    try {
+      const db = await window.indexedDB.open('test');
+      db.onerror = () => true;
+      return false;
     } catch {
+      return true;
+    }
+  }
+
+  private static checkLocalStorage(): boolean {
+    try {
+      localStorage.setItem('test', 'test');
+      localStorage.removeItem('test');
+      return false;
+    } catch {
+      return true;
+    }
+  }
+
+  private static async checkWebRTC(): Promise<boolean> {
+    if (!(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices)) {
       return false;
     }
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return !devices.length;
+    } catch {
+      return true;
+    }
+  }
+
+  private static checkCookiesEnabled(): boolean {
+    try {
+      document.cookie = "testcookie=1";
+      const result = document.cookie.indexOf("testcookie=") !== -1;
+      document.cookie = "testcookie=1; expires=Thu, 01-Jan-1970 00:00:01 GMT";
+      return !result;
+    } catch {
+      return true;
+    }
+  }
+
+  private static checkPDFViewerEnabled(): boolean {
+    const pdfViewerIndicators = [
+      'PDFViewer' in window,
+      'WebKitPDFViewer' in window,
+      'MozPDFViewer' in window,
+      'PDFDocument' in window
+    ];
+    
+    return !pdfViewerIndicators.some(indicator => !!indicator);
+  }
+  
+
+  private static checkPluginsLength(): boolean {
+    return navigator.plugins.length === 0;
+  }
+
+  private static async checkPersistentStorage(): Promise<boolean> {
+    if ('storage' in navigator && 'persist' in navigator.storage) {
+      const persisted = await navigator.storage.persist();
+      return !persisted;
+    }
+    return false;
+  }
+
+  private static async checkTemporaryStorage(): Promise<boolean> {
+    if ('storage' in navigator && 'estimate' in navigator.storage) {
+      const { quota } = await navigator.storage.estimate();
+      return quota === 120000000; // Chrome's incognito quota is usually 120MB
+    }
+    return false;
   }
 
   private static async detectEmulator(): Promise<boolean> {
@@ -91,7 +232,7 @@ class DeviceFingerprintSDK {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
-    
+
     ctx.textBaseline = "top";
     ctx.font = "14px 'Arial'";
     ctx.textBaseline = "alphabetic";
@@ -101,7 +242,7 @@ class DeviceFingerprintSDK {
     ctx.fillText("Hello, world!", 2, 15);
     ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
     ctx.fillText("Hello, world!", 4, 17);
-    
+
     return canvas.toDataURL();
   }
 
@@ -128,13 +269,13 @@ class DeviceFingerprintSDK {
       analyser.connect(gainNode);
       gainNode.connect(audioContext.destination);
       oscillator.start();
-      
+
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       analyser.getByteFrequencyData(dataArray);
-      
+
       oscillator.stop();
       audioContext.close();
-      
+
       return dataArray.join(',');
     } catch {
       return '';
@@ -153,7 +294,7 @@ class DeviceFingerprintSDK {
     const start = performance.now();
     try {
       await fetch(url, { mode: 'no-cors', cache: 'no-store' });
-    } catch {}
+    } catch { }
     return Math.round(performance.now() - start);
   }
 
@@ -165,7 +306,7 @@ class DeviceFingerprintSDK {
     this.cache.set(key, result);
     return result;
   }
-  
+
   private static async getGeolocation(): Promise<GeoLocation | 'unknown'> {
     return new Promise((resolve) => {
       if ("geolocation" in navigator) {
@@ -196,10 +337,10 @@ class DeviceFingerprintSDK {
       const metadata = this.getBrowserMetadata();
       const fingerprintComponents: any = { ...metadata };
 
-      const currentIP = await this.getCachedOrFetch('publicIP', this.getPublicIP);
-      const proxyData = currentIP ? await this.getCachedOrFetch(`proxyData_${currentIP}`, () => this.checkIPReputation(currentIP)) : null;
+      const currentIP = await this.getPublicIP();
+      const proxyData = currentIP ? await this.checkIPReputation(currentIP) : null;
 
-      const isVPN = proxyData && proxyData.proxy === true;
+      const isVPN = proxyData?.security.vpn;
       fingerprintComponents.ipAddress = currentIP || "unknown";
       fingerprintComponents.isVPN = isVPN;
 
