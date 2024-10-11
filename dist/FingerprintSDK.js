@@ -51,25 +51,25 @@ class DeviceFingerprintSDK {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         };
     }
-    static async detectIncognitoMode() {
-        const checks = [
-            this.checkFileSystem,
-            this.checkIndexedDB,
-            this.checkLocalStorage,
-            this.checkWebRTC,
-            this.checkPersistentStorage,
-            this.checkTemporaryStorage,
-            this.checkCookiesEnabled,
-            this.checkPDFViewerEnabled,
-            this.checkPluginsLength
-        ];
-        const results = await Promise.all(checks.map(check => check()));
-        console.log("checks :", results);
-        // Count the number of checks that indicate incognito mode
-        const incognitoCount = results.filter(result => result === true).length;
-        // Consider it incognito if more than half of the checks indicate so
-        return incognitoCount > checks.length / 2;
-    }
+    // private static async detectIncognitoMode(): Promise<boolean> {
+    //   const checks = [
+    //     this.checkFileSystem,
+    //     this.checkIndexedDB,
+    //     this.checkLocalStorage,
+    //     this.checkWebRTC,
+    //     this.checkPersistentStorage,
+    //     this.checkTemporaryStorage,
+    //     this.checkCookiesEnabled,
+    //     this.checkPDFViewerEnabled,
+    //     this.checkPluginsLength
+    //   ];
+    //   const results = await Promise.all(checks.map(check => check()));
+    //   console.log("checks :", results)
+    //   // Count the number of checks that indicate incognito mode
+    //   const incognitoCount = results.filter(result => result === true).length;
+    //   // Consider it incognito if more than half of the checks indicate so
+    //   return incognitoCount > checks.length / 2;
+    // }
     static async checkFileSystem() {
         return new Promise(resolve => {
             if ('webkitRequestFileSystem' in window) {
@@ -260,7 +260,7 @@ class DeviceFingerprintSDK {
             const isVPN = proxyData?.security.vpn;
             fingerprintComponents.ipAddress = currentIP || "unknown";
             fingerprintComponents.isVPN = isVPN;
-            fingerprintComponents.isIncognito = await this.detectIncognitoMode();
+            // fingerprintComponents.isIncognito = await this.detectIncognitoMode();
             fingerprintComponents.isEmulator = await this.detectEmulator();
             fingerprintComponents.ipChanged = await this.hasIPChanged();
             fingerprintComponents.geoLocation = await this.getGeolocation();
@@ -278,7 +278,7 @@ class DeviceFingerprintSDK {
                 isVPN: fingerprintComponents.isVPN,
                 isTor: fingerprintComponents.isTor || false,
                 isEmulator: fingerprintComponents.isEmulator,
-                isIncognito: fingerprintComponents.isIncognito,
+                // isIncognito: fingerprintComponents.isIncognito,
                 latency: fingerprintComponents.latency,
                 ipChanged: fingerprintComponents.ipChanged,
                 dnsLeak: fingerprintComponents.dnsLeak || false,

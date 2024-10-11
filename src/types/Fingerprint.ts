@@ -44,7 +44,7 @@ export interface Fingerprint {
     isVPN: boolean;
     isTor: boolean;
     isEmulator: boolean;
-    isIncognito: boolean;
+    //isIncognito: boolean;
     latency: number;
     ipChanged: boolean;
     dnsLeak: boolean;
