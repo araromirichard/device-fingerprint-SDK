@@ -21,7 +21,7 @@
         const resultEl = document.getElementById('result');
 
         loadingEl.style.display = 'block';
-        DeviceFingerprintSDK.generateDeviceFingerprint().then(fingerprint => {
+        DeviceFingerprintSDK.generateFingerprint().then(fingerprint => {
             loadingEl.style.display = 'none';
             resultEl.textContent = JSON.stringify(fingerprint, null, 2);
         }).catch(error => {

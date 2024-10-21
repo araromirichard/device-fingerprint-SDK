@@ -1,54 +1,40 @@
 export interface GeoLocation {
     country: string;
-    region: string;
     city: string;
-    latitude: string;
-    longitude: string;
+    country_code: string;
 }
 
-export interface ProxyDataEntry {
-    asn: string;
-    range: string;
-    provider: string;
-    organisation: string;
-    continent: string;
-    continentcode: string;
+export interface IPReputationResponse {
+
+    ip: string;
+    iso_code: string;
     country: string;
-    isocode: string;
-    region: string;
-    regioncode: string;
-    timezone: string;
     city: string;
-    latitude: number;
-    longitude: number;
-    currency: {
-        code: string;
-        name: string;
-        symbol: string;
-    };
-    proxy: string;
-    type: string;
-    risk: number;
-    tor?: 'yes' | 'no' | 'unknown';
-}
-
-export interface ProxyData {
-    status: string;
-    [ip: string]: ProxyDataEntry | string;
+    is_proxy: boolean;
+    is_vpn: boolean;
+    is_tor: boolean;
+    is_bot: boolean;
+    is_datacenter: boolean;
 }
 
 export interface Fingerprint {
     fingerprintHash: string;
     ipAddress: string;
-    geoLocation: GeoLocation | 'unknown';
+    comfirmIP: string;
+    geoLocation: GeoLocation;
     isVPN: boolean;
     isTor: boolean;
+    isProxy: boolean;
+    isBot: boolean;
+    isDatacenter: boolean;
     isEmulator: boolean;
-    //isIncognito: boolean;
-    latency: number;
     ipChanged: boolean;
-    dnsLeak: boolean;
     canvasFingerprint: string;
     webGLFingerprint: string;
     audioFingerprint: string;
 }
+
+
+export type EnhancedIPReputationResponse = IPReputationResponse & {
+    [key: string]: any;
+};
