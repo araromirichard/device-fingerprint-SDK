@@ -21,29 +21,38 @@ class DeviceFingerprintSDK {
             return null;
         }
     }
-    static async checkIPReputation(ip) {
-        const apiKey = "7807676e46014601a1350b9b04bc86c8";
-        const url = `https://api.focsec.com/v1/ip/${ip}?api_key=${apiKey}`;
-        const response = await this.fetchFromAPI(url);
-        console.log(response);
-        return {
-            ip: response?.ip || '',
-            country_code: response?.iso_code || '',
-            country: response?.country || '',
-            city: response?.city || '',
-            proxy: response?.is_proxy || false,
-            vpn: response?.is_vpn || false,
-            tor: response?.is_tor || false,
-            bot: response?.is_bot || false,
-            datacenter: response?.is_datacenter || false,
-        };
-    }
+    // private static async checkIPReputation(ip: string): Promise<any> {
+    //   const apiKey = "7807676e46014601a1350b9b04bc86c8";
+    //   const url = `https://api.focsec.com/v1/ip/${ip}?api_key=${apiKey}`;
+    //   const response = await this.fetchFromAPI(url);
+    //   console.log(response);
+    //   return {
+    //     ip: response?.ip || '',
+    //     country_code: response?.iso_code || '',
+    //     country: response?.country || '',
+    //     city: response?.city || '',
+    //     proxy: response?.is_proxy || false,
+    //     vpn: response?.is_vpn || false,
+    //     tor: response?.is_tor || false,
+    //     bot: response?.is_bot || false,
+    //     datacenter: response?.is_datacenter || false,
+    //   };
+    // }
     static async checkIP(ip) {
         try {
             const response = await fetch(`/.netlify/functions/checkIPReputation?ip=${ip}`);
             const data = await response.json();
-            console.log(data);
-            // Handle the data in your app
+            return {
+                ip: data?.ip || '',
+                country_code: data?.iso_code || '',
+                country: data?.country || '',
+                city: data?.city || '',
+                proxy: data?.is_proxy || false,
+                vpn: data?.is_vpn || false,
+                tor: data?.is_tor || false,
+                bot: data?.is_bot || false,
+                datacenter: data?.is_datacenter || false,
+            };
         }
         catch (error) {
             console.error('Error:', error);
