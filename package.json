@@ -4,11 +4,14 @@
   "description": "A lightweight JavaScript SDK for generating device fingerprints using various browser features like Canvas, WebGL, and Audio APIs.",
   "main": "index.js",
   "dependencies": {
+    "axios": "^1.7.7",
     "typescript": "^5.6.2",
     "undici-types": "^6.19.8"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "ts-node src/index.ts",
+    "serve": "node server/proxy-server.js"
   },
   "keywords": [],
   "author": "",

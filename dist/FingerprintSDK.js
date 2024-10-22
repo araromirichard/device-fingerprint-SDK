@@ -38,6 +38,17 @@ class DeviceFingerprintSDK {
             datacenter: response?.is_datacenter || false,
         };
     }
+    static async checkIP(ip) {
+        try {
+            const response = await fetch(`/.netlify/functions/checkIPReputation?ip=${ip}`);
+            const data = await response.json();
+            console.log(data);
+            // Handle the data in your app
+        }
+        catch (error) {
+            console.error('Error:', error);
+        }
+    }
     static async detectEmulator() {
         const userAgent = navigator.userAgent.toLowerCase();
         return ['emulator', 'android sdk built for x86', 'google_sdk'].some(keyword => userAgent.includes(keyword));
@@ -110,7 +121,7 @@ class DeviceFingerprintSDK {
     }
     static async generateFingerprint() {
         const ip = await this.getPublicIP();
-        const ipReputation = ip ? await this.checkIPReputation(ip) : null;
+        const ipReputation = ip ? await this.checkIP(ip) : null;
         return {
             fingerprintHash: await this.generateUniqueFingerprint(),
             ipAddress: ip || '',

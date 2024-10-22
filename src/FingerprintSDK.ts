@@ -42,6 +42,17 @@ class DeviceFingerprintSDK {
       datacenter: response?.is_datacenter || false,
     };
   }
+  
+  private static async checkIP(ip: string): Promise<any> {
+    try {
+      const response = await fetch(`/.netlify/functions/checkIPReputation?ip=${ip}`);
+      const data = await response.json();
+      console.log(data);
+      // Handle the data in your app
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }
 
   private static async detectEmulator(): Promise<boolean> {
     const userAgent = navigator.userAgent.toLowerCase();
@@ -123,7 +134,7 @@ class DeviceFingerprintSDK {
   }
   public static async generateFingerprint(): Promise<Fingerprint> {
     const ip = await this.getPublicIP();
-    const ipReputation = ip ? await this.checkIPReputation(ip) : null;
+    const ipReputation = ip ? await this.checkIP(ip) : null;
 
     return {
       fingerprintHash: await this.generateUniqueFingerprint(),
