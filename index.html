@@ -10,25 +10,38 @@
 </head>
 <body>
     <h1>Device Fingerprint Test</h1>
+    <input type="text" id="orgId" placeholder="Enter Organization ID">
+    <button onclick="generateFingerprint()">Generate Fingerprint</button>
     <div id="loading">Generating fingerprint...</div>
     <div id="error"></div>
     <pre id="result"></pre>
     <script type="module">
         import DeviceFingerprintSDK from './dist/fingerprintSDK.js';
         
-        const loadingEl = document.getElementById('loading');
-        const errorEl = document.getElementById('error');
-        const resultEl = document.getElementById('result');
+        window.generateFingerprint = async function() {
+            const orgId = document.getElementById('orgId').value;
+            if (!orgId) {
+                document.getElementById('error').textContent = 'Please enter an Organization ID';
+                return;
+            }
 
-        loadingEl.style.display = 'block';
-        DeviceFingerprintSDK.generateFingerprint().then(fingerprint => {
-            loadingEl.style.display = 'none';
-            resultEl.textContent = JSON.stringify(fingerprint, null, 2);
-        }).catch(error => {
-            loadingEl.style.display = 'none';
-            errorEl.style.display = 'block';
-            errorEl.textContent = 'Error generating fingerprint: ' + error.message;
-        });
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const resultEl = document.getElementById('result');
+
+            loadingEl.style.display = 'block';
+            errorEl.style.display = 'none';
+            
+            DeviceFingerprintSDK.setOrgId(orgId); // Add method to set org ID
+            DeviceFingerprintSDK.generateFingerprint().then(fingerprint => {
+                loadingEl.style.display = 'none';
+                resultEl.textContent = JSON.stringify(fingerprint, null, 2);
+            }).catch(error => {
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = 'Error generating fingerprint: ' + error.message;
+            });
+        };
     </script>
 </body>
 </html>

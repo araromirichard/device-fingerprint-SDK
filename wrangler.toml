@@ -3,5 +3,9 @@ main = "functions/checkIPReputation.js"
 compatibility_date = "2023-01-01"
 
 [vars]
-# You'll need to set this in the Cloudflare dashboard
-# IPQS_API_KEY = "your_ipqualityscore_api_key"
+IPQS_API_KEY = "P6bVnlPwmomHkN6BiqTI81teIKJFeppU"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fingerprint-db"
+database_id = "9460019c-92f7-4656-861b-4d0688ed0269"
