@@ -1,9 +1,19 @@
 class DeviceFingerprintSDK {
     static orgId;
-    static setOrgId(id) {
-        this.orgId = id;
+    static generateOrgId() {
+        // Generate a unique identifier combining timestamp and random values
+        const timestamp = Date.now().toString(36);
+        const randomStr = Math.random().toString(36).substring(2, 8);
+        return `${timestamp}-${randomStr}`;
+    }
+    static initialize() {
+        this.orgId = this.generateOrgId();
+        return this.orgId;
     }
     static async generateFingerprint() {
+        if (!this.orgId) {
+            this.initialize();
+        }
         try {
             const response = await fetch(`https://ip-reputation-checker.checkiprep.workers.dev/api/checkIPReputation`, {
                 headers: {

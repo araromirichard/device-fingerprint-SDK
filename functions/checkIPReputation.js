@@ -1,9 +1,29 @@
 export default {
     async fetch(request, env) {
+        // Add CORS headers
+        const corsHeaders = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, x-org-id'
+        };
+
+        // Handle OPTIONS request for CORS preflight
+        if (request.method === 'OPTIONS') {
+            return new Response(null, {
+                headers: corsHeaders
+            });
+        }
+
         const { searchParams } = new URL(request.url);
         const ip = request.headers.get('cf-connecting-ip');
         const orgId = request.headers.get('x-org-id');
         const userAgent = request.headers.get('user-agent');
+
+        // Add CORS headers to all responses
+        const baseHeaders = {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+        };
 
         if (!orgId) {
             return new Response(JSON.stringify({ error: "Organization ID required" }), {
@@ -76,7 +96,7 @@ export default {
             }
 
             return new Response(JSON.stringify(fingerprint), {
-                headers: { 'Content-Type': 'application/json' }
+                headers: baseHeaders
             });
 
         } catch (error) {
