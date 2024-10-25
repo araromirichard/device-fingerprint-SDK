@@ -1,0 +1,7 @@
+name = "ip-reputation-checker"
+main = "functions/checkIPReputation.js"
+compatibility_date = "2023-01-01"
+
+[vars]
+# You'll need to set this in the Cloudflare dashboard
+# IPQS_API_KEY = "your_ipqualityscore_api_key"

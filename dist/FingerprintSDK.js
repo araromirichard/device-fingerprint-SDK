@@ -21,26 +21,9 @@ class DeviceFingerprintSDK {
             return null;
         }
     }
-    // private static async checkIPReputation(ip: string): Promise<any> {
-    //   const apiKey = "7807676e46014601a1350b9b04bc86c8";
-    //   const url = `https://api.focsec.com/v1/ip/${ip}?api_key=${apiKey}`;
-    //   const response = await this.fetchFromAPI(url);
-    //   console.log(response);
-    //   return {
-    //     ip: response?.ip || '',
-    //     country_code: response?.iso_code || '',
-    //     country: response?.country || '',
-    //     city: response?.city || '',
-    //     proxy: response?.is_proxy || false,
-    //     vpn: response?.is_vpn || false,
-    //     tor: response?.is_tor || false,
-    //     bot: response?.is_bot || false,
-    //     datacenter: response?.is_datacenter || false,
-    //   };
-    // }
     static async checkIP(ip) {
         try {
-            const response = await fetch(`/.netlify/functions/checkIPReputation?ip=${ip}`);
+            const response = await fetch(`https://ip-reputation-checker.checkiprep.workers.dev/api/checkIPReputation?ip=${ip}`);
             const data = await response.json();
             return {
                 ip: data?.ip || '',
