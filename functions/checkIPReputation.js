@@ -81,6 +81,7 @@ export default {
                     `https://www.ipqualityscore.com/api/json/ip/${IPQS_API_KEY}/${ip}`
                 ).then(r => r.json());
 
+                console.log(JSON.stringify(ipData, null, 2));
                 fingerprint = {
                     ...fingerprint,
                     comfirmIP: ipData.ip,

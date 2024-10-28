@@ -6,11 +6,21 @@ class DeviceFingerprintSDK {
         return `${timestamp}-${randomStr}`;
     }
     static initialize() {
-        this.orgId = this.generateOrgId();
+        const storedOrgId = localStorage.getItem('device_fingerprint_org_id');
+        if (storedOrgId) {
+            this.orgId = storedOrgId;
+        }
+        else {
+            this.orgId = this.generateOrgId();
+            localStorage.setItem('device_fingerprint_org_id', this.orgId);
+        }
         return this.orgId;
     }
     static getOrgId() {
-        return this.orgId;
+        if (!this.orgId) {
+            return this.initialize();
+        }
+        return localStorage.getItem('device_fingerprint_org_id') || this.orgId;
     }
     static async generateFingerprint() {
         if (!this.orgId) {
