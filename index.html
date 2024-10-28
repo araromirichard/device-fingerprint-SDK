@@ -1,4 +1,5 @@
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -124,11 +125,11 @@
             border-radius: 50%;
         }
 
-        input:checked + .slider {
+        input:checked+.slider {
             background-color: #19283d;
         }
 
-        input:checked + .slider:before {
+        input:checked+.slider:before {
             transform: translateX(26px);
         }
 
@@ -147,10 +148,15 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Device Fingerprint Test</h1>
-        
+        <div class="controls">
+            <input type="text" id="orgIdInput" placeholder="Enter Organization ID" />
+            <input type="text" id="domainInput" placeholder="Enter Domain" />
+            <button onclick="setCredentials()">Set Credentials</button>
+        </div>
         <div class="controls">
             <label class="switch">
                 <input type="checkbox" id="advanceToggle" onchange="toggleAdvance()">
@@ -167,14 +173,38 @@
         <div id="error"></div>
         <pre id="result"></pre>
     </div>
-
     <script type="module">
         import DeviceFingerprintSDK from './dist/fingerprintSDK.js';
-        
-        window.toggleAdvance = async function() {
+
+        window.setCredentials = function () {
+            const orgIdInput = document.getElementById('orgIdInput');
+            const domainInput = document.getElementById('domainInput');
+            const orgId = orgIdInput.value.trim();
+            const domain = domainInput.value.trim();
+
+            try {
+                DeviceFingerprintSDK.setCredentials(orgId, domain);
+                alert('Credentials set successfully!');
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+
+        // On page load, set the input value if orgId exists
+        document.addEventListener('DOMContentLoaded', () => {
+            const credentials = DeviceFingerprintSDK.getCredentials();
+            if (credentials.orgId) {
+                document.getElementById('orgIdInput').value = credentials.orgId;
+            }
+            if (credentials.domain) {
+                document.getElementById('domainInput').value = credentials.domain;
+            }
+        });
+
+        window.toggleAdvance = async function () {
             const orgId = DeviceFingerprintSDK.getOrgId();
             const isAdvanced = document.getElementById('advanceToggle').checked;
-            
+
             await fetch(`https://ip-reputation-checker.checkiprep.workers.dev/api/updateAdvance`, {
                 method: 'POST',
                 headers: {
@@ -185,14 +215,14 @@
             });
         };
 
-        window.generateFingerprint = async function() {
+        window.generateFingerprint = async function () {
             const loadingEl = document.getElementById('loading');
             const errorEl = document.getElementById('error');
             const resultEl = document.getElementById('result');
 
             loadingEl.style.display = 'block';
             errorEl.style.display = 'none';
-            
+
             DeviceFingerprintSDK.generateFingerprint().then(fingerprint => {
                 loadingEl.style.display = 'none';
                 resultEl.textContent = JSON.stringify(fingerprint, null, 2);
@@ -205,4 +235,5 @@
         };
     </script>
 </body>
+
 </html>

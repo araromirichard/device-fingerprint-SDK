@@ -1,35 +1,35 @@
 class DeviceFingerprintSDK {
     static orgId;
-    static generateOrgId() {
-        const timestamp = Date.now().toString(36);
-        const randomStr = Math.random().toString(36).substring(2, 8);
-        return `${timestamp}-${randomStr}`;
+    static domain;
+    static setCredentials(orgId, domain) {
+        if (!orgId) {
+            throw new Error('Organization ID cannot be empty');
+        }
+        if (!domain) {
+            throw new Error('Domain cannot be empty');
+        }
+        this.orgId = orgId;
+        this.domain = domain;
+        localStorage.setItem('device_fingerprint_org_id', orgId);
+        localStorage.setItem('device_fingerprint_domain', domain);
+        return { orgId, domain };
     }
-    static initialize() {
-        const storedOrgId = localStorage.getItem('device_fingerprint_org_id');
-        if (storedOrgId) {
-            this.orgId = storedOrgId;
-        }
-        else {
-            this.orgId = this.generateOrgId();
-            localStorage.setItem('device_fingerprint_org_id', this.orgId);
-        }
-        return this.orgId;
-    }
-    static getOrgId() {
-        if (!this.orgId) {
-            return this.initialize();
-        }
-        return localStorage.getItem('device_fingerprint_org_id') || this.orgId;
+    static getCredentials() {
+        return {
+            orgId: localStorage.getItem('device_fingerprint_org_id') || '',
+            domain: localStorage.getItem('device_fingerprint_domain') || ''
+        };
     }
     static async generateFingerprint() {
-        if (!this.orgId) {
-            this.initialize();
+        const { orgId, domain } = this.getCredentials();
+        if (!orgId || !domain) {
+            throw new Error('Please set Organization ID and Domain first');
         }
         try {
             const response = await fetch(`https://ip-reputation-checker.checkiprep.workers.dev/api/checkIPReputation`, {
                 headers: {
-                    'x-org-id': this.orgId
+                    'x-org-id': orgId,
+                    'x-domain': domain
                 }
             });
             if (!response.ok) {
