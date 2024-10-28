@@ -19,12 +19,23 @@ export default {
         };
 
         try {
-            // First try to get existing org
+            // Handle POST request to update advance status
+            if (request.method === 'POST' && new URL(request.url).pathname === '/api/updateAdvance') {
+                const { advance } = await request.json();
+                await env.DB.prepare(
+                    "UPDATE organizations SET advance = ? WHERE org_id = ?"
+                ).bind(advance, orgId).run();
+                
+                return new Response(JSON.stringify({ success: true }), {
+                    headers: baseHeaders
+                });
+            }
+
+            // Rest of your existing code...
             let org = await env.DB.prepare(
                 "SELECT * FROM organizations WHERE org_id = ?"
             ).bind(orgId).first();
 
-            // If org doesn't exist, create it
             if (!org) {
                 org = await env.DB.prepare(
                     "INSERT INTO organizations (org_id, usage_count, advance) VALUES (?, 0, false) RETURNING *"
@@ -104,16 +115,4 @@ export default {
             });
         }
     }
-}
-
-// Handle POST request to update advance status mainly for testing
-if (request.method === 'POST' && new URL(request.url).pathname === '/api/updateAdvance') {
-    const { advance } = await request.json();
-    await env.DB.prepare(
-        "UPDATE organizations SET advance = ? WHERE org_id = ?"
-    ).bind(advance, orgId).run();
-    
-    return new Response(JSON.stringify({ success: true }), {
-        headers: baseHeaders
-    });
 }
