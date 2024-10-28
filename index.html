@@ -4,19 +4,102 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SDK Test</title>
     <style>
-        #loading { display: none; }
-        #error { display: none; color: red; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #1976D2;
+        }
+
+        #loading {
+            display: none;
+            text-align: center;
+            color: #666;
+            margin: 1rem 0;
+        }
+
+        #error {
+            display: none;
+            color: #d32f2f;
+            text-align: center;
+            margin: 1rem 0;
+            padding: 0.8rem;
+            background: #ffebee;
+            border-radius: 6px;
+        }
+
+        #result {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
         .switch {
             position: relative;
             display: inline-block;
             width: 60px;
             height: 34px;
         }
+
         .switch input {
             opacity: 0;
             width: 0;
             height: 0;
         }
+
         .slider {
             position: absolute;
             cursor: pointer;
@@ -28,6 +111,7 @@
             transition: .4s;
             border-radius: 34px;
         }
+
         .slider:before {
             position: absolute;
             content: "";
@@ -39,29 +123,50 @@
             transition: .4s;
             border-radius: 50%;
         }
+
         input:checked + .slider {
             background-color: #2196F3;
         }
+
         input:checked + .slider:before {
             transform: translateX(26px);
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            button {
+                padding: 0.6rem 1.2rem;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Device Fingerprint Test</h1>
-    
-    <div style="margin: 20px 0;">
-        <label class="switch">
-            <input type="checkbox" id="advanceToggle" onchange="toggleAdvance()">
-            <span class="slider"></span>
-        </label>
-        <span style="margin-left: 10px;">Advanced Mode</span>
-    </div>
+    <div class="container">
+        <h1>Device Fingerprint Test</h1>
+        
+        <div class="controls">
+            <label class="switch">
+                <input type="checkbox" id="advanceToggle" onchange="toggleAdvance()">
+                <span class="slider"></span>
+            </label>
+            <span>Advanced Mode</span>
+        </div>
 
-    <button onclick="generateFingerprint()">Generate Fingerprint</button>
-    <div id="loading">Generating fingerprint...</div>
-    <div id="error"></div>
-    <pre id="result"></pre>
+        <div class="controls">
+            <button onclick="generateFingerprint()">Generate Fingerprint</button>
+        </div>
+
+        <div id="loading">Generating fingerprint...</div>
+        <div id="error"></div>
+        <pre id="result"></pre>
+    </div>
 
     <script type="module">
         import DeviceFingerprintSDK from './dist/fingerprintSDK.js';
@@ -91,7 +196,6 @@
             DeviceFingerprintSDK.generateFingerprint().then(fingerprint => {
                 loadingEl.style.display = 'none';
                 resultEl.textContent = JSON.stringify(fingerprint, null, 2);
-                // Update switch based on response
                 document.getElementById('advanceToggle').checked = fingerprint.organization.advance;
             }).catch(error => {
                 loadingEl.style.display = 'none';
