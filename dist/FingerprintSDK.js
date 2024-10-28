@@ -1,13 +1,15 @@
 class DeviceFingerprintSDK {
     static orgId;
     static generateOrgId() {
-        // Generate a unique identifier combining timestamp and random values
         const timestamp = Date.now().toString(36);
         const randomStr = Math.random().toString(36).substring(2, 8);
         return `${timestamp}-${randomStr}`;
     }
     static initialize() {
         this.orgId = this.generateOrgId();
+        return this.orgId;
+    }
+    static getOrgId() {
         return this.orgId;
     }
     static async generateFingerprint() {

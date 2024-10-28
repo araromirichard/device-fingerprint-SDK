@@ -1,49 +1,40 @@
 export default {
     async fetch(request, env) {
-        // Add CORS headers
         const corsHeaders = {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, x-org-id'
         };
 
-        // Handle OPTIONS request for CORS preflight
         if (request.method === 'OPTIONS') {
-            return new Response(null, {
-                headers: corsHeaders
-            });
+            return new Response(null, { headers: corsHeaders });
         }
 
-        const { searchParams } = new URL(request.url);
         const ip = request.headers.get('cf-connecting-ip');
         const orgId = request.headers.get('x-org-id');
         const userAgent = request.headers.get('user-agent');
-
-        // Add CORS headers to all responses
         const baseHeaders = {
             'Content-Type': 'application/json',
             ...corsHeaders
         };
 
-        if (!orgId) {
-            return new Response(JSON.stringify({ error: "Organization ID required" }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
         try {
-            // Check org status and increment usage
-            const org = await env.DB.prepare(
-                "UPDATE organizations SET usage_count = usage_count + 1 WHERE org_id = ? RETURNING *"
+            // First try to get existing org
+            let org = await env.DB.prepare(
+                "SELECT * FROM organizations WHERE org_id = ?"
             ).bind(orgId).first();
 
+            // If org doesn't exist, create it
             if (!org) {
-                return new Response(JSON.stringify({ error: "Invalid organization ID" }), {
-                    status: 403,
-                    headers: { 'Content-Type': 'application/json' }
-                });
+                org = await env.DB.prepare(
+                    "INSERT INTO organizations (org_id, usage_count, advance) VALUES (?, 0, false) RETURNING *"
+                ).bind(orgId).first();
             }
+
+            // Update usage count
+            await env.DB.prepare(
+                "UPDATE organizations SET usage_count = usage_count + 1 WHERE org_id = ?"
+            ).bind(orgId).run();
 
             // Generate device fingerprint components
             const deviceData = {
@@ -95,15 +86,34 @@ export default {
                 };
             }
 
-            return new Response(JSON.stringify(fingerprint), {
+            return new Response(JSON.stringify({
+                organization: {
+                    orgId: org.org_id,
+                    usageCount: org.usage_count,
+                    advance: org.advance
+                },
+                fingerprint
+            }), {
                 headers: baseHeaders
             });
 
         } catch (error) {
             return new Response(JSON.stringify({ error: "Failed to generate fingerprint" }), {
                 status: 500,
-                headers: { 'Content-Type': 'application/json' }
+                headers: baseHeaders
             });
         }
     }
+}
+
+// Handle POST request to update advance status mainly for testing
+if (request.method === 'POST' && new URL(request.url).pathname === '/api/updateAdvance') {
+    const { advance } = await request.json();
+    await env.DB.prepare(
+        "UPDATE organizations SET advance = ? WHERE org_id = ?"
+    ).bind(advance, orgId).run();
+    
+    return new Response(JSON.stringify({ success: true }), {
+        headers: baseHeaders
+    });
 }

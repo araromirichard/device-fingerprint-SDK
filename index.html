@@ -6,17 +6,80 @@
     <style>
         #loading { display: none; }
         #error { display: none; color: red; }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
     </style>
 </head>
 <body>
     <h1>Device Fingerprint Test</h1>
+    
+    <div style="margin: 20px 0;">
+        <label class="switch">
+            <input type="checkbox" id="advanceToggle" onchange="toggleAdvance()">
+            <span class="slider"></span>
+        </label>
+        <span style="margin-left: 10px;">Advanced Mode</span>
+    </div>
+
     <button onclick="generateFingerprint()">Generate Fingerprint</button>
     <div id="loading">Generating fingerprint...</div>
     <div id="error"></div>
     <pre id="result"></pre>
+
     <script type="module">
         import DeviceFingerprintSDK from './dist/fingerprintSDK.js';
         
+        window.toggleAdvance = async function() {
+            const orgId = DeviceFingerprintSDK.getOrgId();
+            const isAdvanced = document.getElementById('advanceToggle').checked;
+            
+            await fetch(`https://ip-reputation-checker.checkiprep.workers.dev/api/updateAdvance`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-org-id': orgId
+                },
+                body: JSON.stringify({ advance: isAdvanced })
+            });
+        };
+
         window.generateFingerprint = async function() {
             const loadingEl = document.getElementById('loading');
             const errorEl = document.getElementById('error');
@@ -28,6 +91,8 @@
             DeviceFingerprintSDK.generateFingerprint().then(fingerprint => {
                 loadingEl.style.display = 'none';
                 resultEl.textContent = JSON.stringify(fingerprint, null, 2);
+                // Update switch based on response
+                document.getElementById('advanceToggle').checked = fingerprint.organization.advance;
             }).catch(error => {
                 loadingEl.style.display = 'none';
                 errorEl.style.display = 'block';
