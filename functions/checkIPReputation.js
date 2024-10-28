@@ -38,7 +38,7 @@ export default {
 
             if (!org) {
                 org = await env.DB.prepare(
-                    "INSERT INTO organizations (org_id, usage_count, advance) VALUES (?, 0, false) RETURNING *"
+                    "INSERT INTO organizations (org_id, usage_count, advance) VALUES (?, 1, false) RETURNING *"
                 ).bind(orgId).first();
             }
 

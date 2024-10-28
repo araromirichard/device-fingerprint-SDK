@@ -227,7 +227,8 @@
         });
 
         window.toggleAdvance = async function () {
-            const orgId = DeviceFingerprintSDK.getOrgId();
+            const credentials = DeviceFingerprintSDK.getCredentials();
+            const orgId = credentials.orgId;
             const isAdvanced = document.getElementById('advanceToggle').checked;
 
             await fetch(`https://ip-reputation-checker.checkiprep.workers.dev/api/updateAdvance`, {
