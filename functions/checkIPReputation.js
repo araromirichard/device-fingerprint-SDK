@@ -3,7 +3,7 @@ export default {
         const corsHeaders = {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, x-org-id'
+            'Access-Control-Allow-Headers': 'Content-Type, x-org-id, x-domain'
         };
 
         if (request.method === 'OPTIONS') {
@@ -66,7 +66,9 @@ export default {
             const data = encoder.encode(JSON.stringify(deviceData));
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             const fingerprintHash = Array.from(new Uint8Array(hashBuffer))
-                .map(b => b.toString(16).padStart(2, '0')).join('');
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('')
+                .substring(0, 8); // Take first 8 characters
 
             let fingerprint = {
                 fingerprintHash,
