@@ -127,7 +127,12 @@ export default {
             });
 
         } catch (error) {
-            return new Response(JSON.stringify({ error: "Failed to generate fingerprint" }), {
+            console.error('Detailed error:', error);
+            return new Response(JSON.stringify({ 
+                error: "Failed to generate fingerprint",
+                details: error.message,
+                stack: error.stack
+            }), {
                 status: 500,
                 headers: baseHeaders
             });
