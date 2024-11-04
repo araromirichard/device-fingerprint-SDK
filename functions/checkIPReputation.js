@@ -25,7 +25,7 @@ export default {
                 await env.DB.prepare(
                     "UPDATE organizations SET advance = ? WHERE org_id = ?"
                 ).bind(advance, orgId).run();
-                
+
                 return new Response(JSON.stringify({ success: true }), {
                     headers: baseHeaders
                 });
@@ -68,7 +68,22 @@ export default {
             const fingerprintHash = Array.from(new Uint8Array(hashBuffer))
                 .map(b => b.toString(16).padStart(2, '0'))
                 .join('')
-                .substring(0, 8); // Take first 8 characters
+                .substring(0, 16);
+
+            const existingDevice = await env.DB.prepare(
+                "SELECT device_hash FROM device_fingerprints WHERE org_id = ? AND device_hash = ?"
+            ).bind(orgId, fingerprintHash).first();
+
+            if (!existingDevice) {
+                // New device - store it and increment count
+                await env.DB.prepare(
+                    "INSERT INTO device_fingerprints (org_id, device_hash, created_at) VALUES (?, ?, ?)"
+                ).bind(orgId, fingerprintHash, Date.now()).run();
+
+                await env.DB.prepare(
+                    "UPDATE organizations SET usage_count = usage_count + 1 WHERE org_id = ?"
+                ).bind(orgId).run();
+            }
 
             let fingerprint = {
                 fingerprintHash,
