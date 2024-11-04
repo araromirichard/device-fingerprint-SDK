@@ -66,6 +66,15 @@ export default {
                 ).bind(orgId, domain).first();
             }
 
+            // Add this after finding existing org
+            if (org) {
+                const domain = request.headers.get('x-domain');
+                await env.DB.prepare(
+                    "UPDATE organizations SET domain = ? WHERE org_id = ?"
+                ).bind(domain, orgId).run();
+                org.domain = domain; 
+            }
+
             // Generate device fingerprint components
             const deviceData = {
                 userAgent,

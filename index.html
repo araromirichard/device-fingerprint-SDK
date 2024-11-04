@@ -200,22 +200,50 @@
     </div>
     <script type="module">
         import DeviceFingerprintSDK from './dist/fingerprintSDK.js';
-
+    
         window.setCredentials = function () {
             const orgIdInput = document.getElementById('orgIdInput');
             const domainInput = document.getElementById('domainInput');
-            const orgId = orgIdInput.value.trim();
-            const domain = domainInput.value.trim();
-
+            const errorEl = document.getElementById('error');
+            
             try {
-                DeviceFingerprintSDK.setCredentials(orgId, domain);
+                const result = DeviceFingerprintSDK.setCredentials(
+                    orgIdInput.value.trim(), 
+                    domainInput.value.trim()
+                );
+                errorEl.style.display = 'none';
                 alert('Credentials set successfully!');
             } catch (error) {
-                alert(error.message);
+                errorEl.style.display = 'block';
+                errorEl.textContent = error.message;
             }
         };
-
-        // On page load, set the input value if orgId exists
+    
+        window.generateFingerprint = async function () {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const resultEl = document.getElementById('result');
+    
+            loadingEl.style.display = 'block';
+            errorEl.style.display = 'none';
+            resultEl.textContent = '';
+    
+            try {
+                const fingerprint = await DeviceFingerprintSDK.generateFingerprint();
+                loadingEl.style.display = 'none';
+                resultEl.textContent = JSON.stringify(fingerprint, null, 2);
+                
+                if (fingerprint.organization?.advance !== undefined) {
+                    document.getElementById('advanceToggle').checked = fingerprint.organization.advance;
+                }
+            } catch (error) {
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = error.message;
+            }
+        };
+    
+        // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
             const credentials = DeviceFingerprintSDK.getCredentials();
             if (credentials.orgId) {
@@ -225,41 +253,8 @@
                 document.getElementById('domainInput').value = credentials.domain;
             }
         });
-
-        window.toggleAdvance = async function () {
-            const credentials = DeviceFingerprintSDK.getCredentials();
-            const orgId = credentials.orgId;
-            const isAdvanced = document.getElementById('advanceToggle').checked;
-
-            await fetch(`https://ip-reputation-checker.checkiprep.workers.dev/api/updateAdvance`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-org-id': orgId
-                },
-                body: JSON.stringify({ advance: isAdvanced })
-            });
-        };
-
-        window.generateFingerprint = async function () {
-            const loadingEl = document.getElementById('loading');
-            const errorEl = document.getElementById('error');
-            const resultEl = document.getElementById('result');
-
-            loadingEl.style.display = 'block';
-            errorEl.style.display = 'none';
-
-            DeviceFingerprintSDK.generateFingerprint().then(fingerprint => {
-                loadingEl.style.display = 'none';
-                resultEl.textContent = JSON.stringify(fingerprint, null, 2);
-                document.getElementById('advanceToggle').checked = fingerprint.organization.advance;
-            }).catch(error => {
-                loadingEl.style.display = 'none';
-                errorEl.style.display = 'block';
-                errorEl.textContent = 'Error generating fingerprint: ' + error.message;
-            });
-        };
     </script>
+    
 </body>
 
 </html>
