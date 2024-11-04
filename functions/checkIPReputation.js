@@ -9,13 +9,25 @@ export default {
         if (request.method === 'OPTIONS') {
             return new Response(null, { headers: corsHeaders });
         }
+              const ip = request.headers.get('cf-connecting-ip');
+              let ipv4Address = ip;
 
-        const ip = request.headers.get('cf-connecting-ip');
-        const orgId = request.headers.get('x-org-id');
-        const userAgent = request.headers.get('user-agent');
-        const baseHeaders = {
-            'Content-Type': 'application/json',
-            ...corsHeaders
+              // Convert IPv6 to IPv4 if needed
+              if (ip.includes(':')) {
+                  // Handle IPv6 mapped IPv4 addresses
+                  if (ip.startsWith('::ffff:')) {
+                      ipv4Address = ip.split(':').pop();
+                  } else {
+                      // For other IPv6, get the last 4 segments
+                      ipv4Address = ip.split(':').slice(-4).join('.');
+                  }
+              }
+
+              const orgId = request.headers.get('x-org-id');
+              const userAgent = request.headers.get('user-agent');
+              const baseHeaders = {
+                  'Content-Type': 'application/json',
+                  ...corsHeaders
         };
 
         try {
