@@ -72,7 +72,7 @@ export default {
                 await env.DB.prepare(
                     "UPDATE organizations SET domain = ? WHERE org_id = ?"
                 ).bind(domain, orgId).run();
-                org.domain = domain; 
+                org.domain = domain;
             }
 
             // Generate device fingerprint components
@@ -108,10 +108,13 @@ export default {
                     "INSERT INTO device_fingerprints (org_id, device_hash, created_at) VALUES (?, ?, ?)"
                 ).bind(orgId, fingerprintHash, Date.now()).run();
 
-                await env.DB.prepare(
-                    "UPDATE organizations SET usage_count = usage_count + 1 WHERE org_id = ?"
-                ).bind(orgId).run();
+
             }
+
+            // Always increment usage count, regardless of new or existing device
+            await env.DB.prepare(
+                "UPDATE organizations SET usage_count = usage_count + 1 WHERE org_id = ?"
+            ).bind(orgId).run();
 
             let fingerprint = {
                 fingerprintHash,
@@ -156,7 +159,7 @@ export default {
 
         } catch (error) {
             console.error('Detailed error:', error);
-            return new Response(JSON.stringify({ 
+            return new Response(JSON.stringify({
                 error: "Failed to generate fingerprint",
                 details: error.message,
                 stack: error.stack
