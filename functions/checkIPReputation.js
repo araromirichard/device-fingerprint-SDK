@@ -9,37 +9,38 @@ export default {
         if (request.method === 'OPTIONS') {
             return new Response(null, { headers: corsHeaders });
         }
-              const ip = request.headers.get('cf-connecting-ip');
-              let ipv4Address = ip;
 
-              // Convert IPv6 to IPv4 if needed
-              if (ip.includes(':')) {
-                  // Handle IPv6 mapped IPv4 addresses
-                  if (ip.startsWith('::ffff:')) {
-                      ipv4Address = ip.split(':').pop();
-                  } else {
-                      // For other IPv6, get the last 4 segments
-                      ipv4Address = ip.split(':').slice(-4).join('.');
-                  }
-              }
+        const ip = request.headers.get('cf-connecting-ip');
+        let ipv4Address = ip;
 
-                        const url = new URL(request.url);
-                        const orgId = request.headers.get('x-org-id') || url.searchParams.get('orgId');
-                        const userAgent = request.headers.get('user-agent');
-                        const baseHeaders = {
-                            'Content-Type': 'application/json',
-                            ...corsHeaders
-                        };
+        // Convert IPv6 to IPv4 if needed
+        if (ip.includes(':')) {
+            // Handle IPv6 mapped IPv4 addresses
+            if (ip.startsWith('::ffff:')) {
+                ipv4Address = ip.split(':').pop();
+            } else {
+                // For other IPv6, get the last 4 segments
+                ipv4Address = ip.split(':').slice(-4).join('.');
+            }
+        }
 
-                        if (!orgId) {
-                            return new Response(JSON.stringify({
-                                error: "Organization ID is required",
-                                message: "Please provide an organization ID via x-org-id header or orgId query parameter"
-                            }), {
-                                status: 400,
-                                headers: baseHeaders
-                            });
-                        }
+        const url = new URL(request.url);
+        const orgId = request.headers.get('x-org-id') || url.searchParams.get('orgId');
+        const userAgent = request.headers.get('user-agent');
+        const baseHeaders = {
+            'Content-Type': 'application/json',
+            ...corsHeaders
+        };
+
+        if (!orgId) {
+            return new Response(JSON.stringify({
+                error: "Organization ID is required",
+                message: "Please provide an organization ID via x-org-id header or orgId query parameter"
+            }), {
+                status: 400,
+                headers: baseHeaders
+            });
+        }
 
         try {
             // Handle POST request to update advance status
@@ -54,21 +55,16 @@ export default {
                 });
             }
 
-            // Rest of your existing code...
             let org = await env.DB.prepare(
                 "SELECT * FROM organizations WHERE org_id = ?"
             ).bind(orgId).first();
 
             if (!org) {
+                const domain = request.headers.get('x-domain');
                 org = await env.DB.prepare(
-                    "INSERT INTO organizations (org_id, usage_count, advance) VALUES (?, 1, false) RETURNING *"
-                ).bind(orgId).first();
+                    "INSERT INTO organizations (org_id, usage_count, advance, domain) VALUES (?, 1, false, ?) RETURNING *"
+                ).bind(orgId, domain).first();
             }
-
-            // Update usage count
-            await env.DB.prepare(
-                "UPDATE organizations SET usage_count = usage_count + 1 WHERE org_id = ?"
-            ).bind(orgId).run();
 
             // Generate device fingerprint components
             const deviceData = {
@@ -81,7 +77,7 @@ export default {
                 colorDepth: request.headers.get('sec-ch-color-depth'),
                 timezone: request.headers.get('sec-ch-timezone'),
                 languages: request.headers.get('accept-language'),
-                ip
+                ip: ipv4Address
             };
 
             // Generate unique fingerprint hash
@@ -110,7 +106,7 @@ export default {
 
             let fingerprint = {
                 fingerprintHash,
-                ipAddress: ip,
+                ipAddress: ipv4Address,
                 isEmulator: deviceData.userAgent.toLowerCase().includes('emulator')
             };
 
@@ -118,10 +114,9 @@ export default {
             if (org.advance) {
                 const IPQS_API_KEY = env.IPQS_API_KEY;
                 const ipData = await fetch(
-                    `https://www.ipqualityscore.com/api/json/ip/${IPQS_API_KEY}/${ip}`
+                    `https://www.ipqualityscore.com/api/json/ip/${IPQS_API_KEY}/${ipv4Address}`
                 ).then(r => r.json());
 
-                console.log(JSON.stringify(ipData, null, 2));
                 fingerprint = {
                     ...fingerprint,
                     comfirmIP: ipData.ip,
@@ -142,7 +137,8 @@ export default {
                 organization: {
                     orgId: org.org_id,
                     usageCount: org.usage_count,
-                    advance: org.advance
+                    advance: org.advance,
+                    domain: org.domain
                 },
                 fingerprint
             }), {
