@@ -23,12 +23,23 @@ export default {
                   }
               }
 
-              const orgId = request.headers.get('x-org-id');
-              const userAgent = request.headers.get('user-agent');
-              const baseHeaders = {
-                  'Content-Type': 'application/json',
-                  ...corsHeaders
-        };
+                        const url = new URL(request.url);
+                        const orgId = request.headers.get('x-org-id') || url.searchParams.get('orgId');
+                        const userAgent = request.headers.get('user-agent');
+                        const baseHeaders = {
+                            'Content-Type': 'application/json',
+                            ...corsHeaders
+                        };
+
+                        if (!orgId) {
+                            return new Response(JSON.stringify({
+                                error: "Organization ID is required",
+                                message: "Please provide an organization ID via x-org-id header or orgId query parameter"
+                            }), {
+                                status: 400,
+                                headers: baseHeaders
+                            });
+                        }
 
         try {
             // Handle POST request to update advance status
